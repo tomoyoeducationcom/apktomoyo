@@ -1,0 +1,535 @@
+{
+  "entities": {
+    "ParentProfile": {
+      "title": "ParentProfile",
+      "description": "Authenticated parent account profile using Google Sign-In.",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string", "minLength": 1, "maxLength": 128 },
+        "displayName": { "type": "string", "minLength": 1, "maxLength": 120 },
+        "email": { "type": "string", "format": "email", "maxLength": 160 },
+        "phone": { "type": "string", "maxLength": 30 },
+        "photoURL": { "type": "string", "maxLength": 500 },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["uid", "displayName", "email", "createdAt", "updatedAt"]
+    },
+    "StudentRegistration": {
+      "title": "StudentRegistration",
+      "description": "Student enrollment and registration record belonging to a parent or offline walk-in.",
+      "type": "object",
+      "properties": {
+        "parentId": { "type": "string", "minLength": 1, "maxLength": 128 },
+        "parentName": { "type": "string", "minLength": 1, "maxLength": 120 },
+        "parentEmail": { "type": "string", "maxLength": 160 },
+        "parentPhone": { "type": "string", "minLength": 8, "maxLength": 30 },
+        "childName": { "type": "string", "minLength": 2, "maxLength": 120 },
+        "birthDate": { "type": "string", "maxLength": 20 },
+        "schoolOrigin": { "type": "string", "maxLength": 120 },
+        "studentAddress": { "type": "string", "maxLength": 250 },
+        "childPhotoUrl": { "type": "string", "maxLength": 500 },
+        "childGender": { "type": "string", "enum": ["Laki-laki", "Perempuan"], "maxLength": 20 },
+        "gradeLevel": { "type": "string", "minLength": 1, "maxLength": 60 },
+        "packageId": { "type": "string", "enum": ["paket-1", "paket-2", "paket-3"], "maxLength": 40 },
+        "packageName": { "type": "string", "minLength": 2, "maxLength": 120 },
+        "branchId": { "type": "string", "enum": ["indramayu-kota", "terisi"], "maxLength": 40 },
+        "branchName": { "type": "string", "minLength": 2, "maxLength": 120 },
+        "registrationChannel": { "type": "string", "enum": ["online", "offline", "migration"], "maxLength": 20 },
+        "billingAmount": { "type": "number" },
+        "initialPaymentStatus": { "type": "string", "enum": ["lunas", "cicilan", "belum_bayar"], "maxLength": 20 },
+        "registeredAtIso": { "type": "string", "maxLength": 50 },
+        "nextDueAtIso": { "type": "string", "maxLength": 50 },
+        "lastDueNotifiedIso": { "type": "string", "maxLength": 50 },
+        "dueConfirmedIso": { "type": "string", "maxLength": 50 },
+        "status": { "type": "string", "enum": ["pending", "approved", "rejected"], "maxLength": 20 },
+        "academicStatus": { "type": "string", "enum": ["menunggu", "aktif", "lulus", "nonaktif"], "maxLength": 20 },
+        "notes": { "type": "string", "maxLength": 500 },
+        "adminNotes": { "type": "string", "maxLength": 500 },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": [
+        "parentId",
+        "parentName",
+        "parentEmail",
+        "parentPhone",
+        "childName",
+        "gradeLevel",
+        "packageId",
+        "packageName",
+        "branchId",
+        "branchName",
+        "status",
+        "academicStatus",
+        "createdAt",
+        "updatedAt"
+      ]
+    },
+    "LearningPackage": {
+      "title": "LearningPackage",
+      "description": "Official TOMOYO learning packages (max 3) with separate Pusat & Cabang prices.",
+      "type": "object",
+      "properties": {
+        "slug": { "type": "string", "maxLength": 40 },
+        "order": { "type": "number" },
+        "title": { "type": "string", "maxLength": 100 },
+        "levelRange": { "type": "string", "maxLength": 100 },
+        "programType": { "type": "string", "maxLength": 100 },
+        "subjects": { "type": "array" },
+        "priceLabel": { "type": "string", "maxLength": 80 },
+        "priceNote": { "type": "string", "maxLength": 200 },
+        "pricePusat": { "type": "number" },
+        "priceCabang": { "type": "number" },
+        "pricePusatNote": { "type": "string", "maxLength": 200 },
+        "priceCabangNote": { "type": "string", "maxLength": 200 },
+        "description": { "type": "string", "maxLength": 600 },
+        "isPublished": { "type": "boolean" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["slug", "order", "title", "levelRange", "programType", "subjects", "isPublished", "updatedAt"]
+    },
+    "BranchLocation": {
+      "title": "BranchLocation",
+      "description": "Official TOMOYO branch locations with Google Maps links and coordinates.",
+      "type": "object",
+      "properties": {
+        "slug": { "type": "string", "maxLength": 40 },
+        "order": { "type": "number" },
+        "name": { "type": "string", "maxLength": 150 },
+        "roleLabel": { "type": "string", "maxLength": 40 },
+        "mapsUrl": { "type": "string", "maxLength": 500 },
+        "latitude": { "type": "number" },
+        "longitude": { "type": "number" },
+        "isPublished": { "type": "boolean" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["slug", "order", "name", "roleLabel", "mapsUrl", "isPublished", "updatedAt"]
+    },
+    "TeacherProfile": {
+      "title": "TeacherProfile",
+      "description": "Official TOMOYO educator record.",
+      "type": "object",
+      "properties": {
+        "order": { "type": "number" },
+        "name": { "type": "string", "maxLength": 150 },
+        "description": { "type": "string", "maxLength": 600 },
+        "photoUrl": { "type": "string", "maxLength": 500 },
+        "isPublished": { "type": "boolean" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["order", "name", "isPublished", "updatedAt"]
+    },
+    "SiteContent": {
+      "title": "SiteContent",
+      "description": "CMS site content documents (about, philosophy, founder, contact, general).",
+      "type": "object",
+      "properties": {
+        "sectionKey": { "type": "string", "maxLength": 60 },
+        "title": { "type": "string", "maxLength": 200 },
+        "subtitle": { "type": "string", "maxLength": 400 },
+        "body": { "type": "string", "maxLength": 4000 },
+        "vision": { "type": "string", "maxLength": 1000 },
+        "mission": { "type": "string", "maxLength": 2000 },
+        "founderName": { "type": "string", "maxLength": 150 },
+        "founderRole": { "type": "string", "maxLength": 100 },
+        "founderPhotoUrl": { "type": "string", "maxLength": 500 },
+        "founderBio": { "type": "string", "maxLength": 2000 },
+        "email": { "type": "string", "maxLength": 160 },
+        "whatsappDisplay": { "type": "string", "maxLength": 40 },
+        "whatsappUrl": { "type": "string", "maxLength": 300 },
+        "instagramUrl": { "type": "string", "maxLength": 300 },
+        "facebookUrl": { "type": "string", "maxLength": 300 },
+        "isPublished": { "type": "boolean" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["sectionKey", "isPublished", "updatedAt"]
+    },
+    "GalleryItem": {
+      "title": "GalleryItem",
+      "description": "CMS photo gallery item uploaded via Cloudinary.",
+      "type": "object",
+      "properties": {
+        "title": { "type": "string", "maxLength": 150 },
+        "caption": { "type": "string", "maxLength": 500 },
+        "imageUrl": { "type": "string", "maxLength": 500 },
+        "category": { "type": "string", "maxLength": 60 },
+        "isPublished": { "type": "boolean" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["title", "imageUrl", "isPublished", "createdAt", "updatedAt"]
+    },
+    "AnnouncementItem": {
+      "title": "AnnouncementItem",
+      "description": "CMS public announcement.",
+      "type": "object",
+      "properties": {
+        "title": { "type": "string", "maxLength": 200 },
+        "content": { "type": "string", "maxLength": 3000 },
+        "imageUrl": { "type": "string", "maxLength": 500 },
+        "dateLabel": { "type": "string", "maxLength": 60 },
+        "isPublished": { "type": "boolean" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["title", "content", "isPublished", "createdAt", "updatedAt"]
+    },
+    "ScheduleItem": {
+      "title": "ScheduleItem",
+      "description": "CMS learning schedule.",
+      "type": "object",
+      "properties": {
+        "title": { "type": "string", "maxLength": 150 },
+        "packageId": { "type": "string", "maxLength": 40 },
+        "branchId": { "type": "string", "maxLength": 40 },
+        "dayTime": { "type": "string", "maxLength": 150 },
+        "notes": { "type": "string", "maxLength": 500 },
+        "isPublished": { "type": "boolean" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["title", "dayTime", "isPublished", "createdAt", "updatedAt"]
+    },
+    "PaymentRecord": {
+      "title": "PaymentRecord",
+      "description": "Manual payment ledger recorded by admin.",
+      "type": "object",
+      "properties": {
+        "studentId": { "type": "string", "maxLength": 128 },
+        "parentId": { "type": "string", "maxLength": 128 },
+        "childName": { "type": "string", "maxLength": 120 },
+        "amount": { "type": "number" },
+        "method": { "type": "string", "maxLength": 60 },
+        "periodLabel": { "type": "string", "maxLength": 80 },
+        "dueDateIso": { "type": "string", "maxLength": 50 },
+        "status": { "type": "string", "enum": ["lunas", "cicilan", "belum_bayar"], "maxLength": 20 },
+        "notes": { "type": "string", "maxLength": 500 },
+        "recordedBy": { "type": "string", "maxLength": 128 },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["studentId", "parentId", "childName", "amount", "method", "periodLabel", "status", "recordedBy", "createdAt", "updatedAt"]
+    },
+    "NotificationLog": {
+      "title": "NotificationLog",
+      "description": "Sanitized Fonnte WhatsApp notification delivery log (never stores API tokens).",
+      "type": "object",
+      "properties": {
+        "registrationId": { "type": "string", "maxLength": 128 },
+        "parentId": { "type": "string", "maxLength": 128 },
+        "type": { "type": "string", "enum": ["registration", "offline_registration", "payment_due", "manual_reminder"], "maxLength": 40 },
+        "target": { "type": "string", "maxLength": 30 },
+        "status": { "type": "string", "enum": ["sent", "failed", "unconfigured", "skipped_duplicate"], "maxLength": 30 },
+        "messagePreview": { "type": "string", "maxLength": 500 },
+        "providerDetail": { "type": "string", "maxLength": 400 },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["registrationId", "parentId", "target", "status", "messagePreview", "createdAt"]
+    },
+    "PublicQuiz": {
+      "title": "PublicQuiz",
+      "description": "Publicly readable quiz metadata and questions with hashed answer verification (never plain answer keys).",
+      "type": "object",
+      "properties": {
+        "title": { "type": "string", "maxLength": 180 },
+        "description": { "type": "string", "maxLength": 1000 },
+        "instructions": { "type": "string", "maxLength": 1500 },
+        "targetClass": { "type": "string", "maxLength": 60 },
+        "status": { "type": "string", "enum": ["draft", "published", "disabled"], "maxLength": 20 },
+        "isPublished": { "type": "boolean" },
+        "timeLimitMinutes": { "type": "number" },
+        "maxAttempts": { "type": "number" },
+        "startAtIso": { "type": "string", "maxLength": 50 },
+        "endAtIso": { "type": "string", "maxLength": 50 },
+        "questionsCount": { "type": "number" },
+        "totalPoints": { "type": "number" },
+        "questions": { "type": "array" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["title", "status", "isPublished", "questionsCount", "questions", "createdAt", "updatedAt"]
+    },
+    "QuizKey": {
+      "title": "QuizKey",
+      "description": "Strictly admin-only quiz answer keys and teacher explanations (never readable by students).",
+      "type": "object",
+      "properties": {
+        "quizId": { "type": "string", "maxLength": 128 },
+        "questionCount": { "type": "number" },
+        "answers": { "type": "object" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["quizId", "questionCount", "answers", "updatedAt"]
+    },
+    "QuizAttempt": {
+      "title": "QuizAttempt",
+      "description": "Graded student quiz submission (student-created on published quizzes, Admin read/delete only).",
+      "type": "object",
+      "properties": {
+        "quizId": { "type": "string", "maxLength": 128 },
+        "quizTitle": { "type": "string", "maxLength": 180 },
+        "studentName": { "type": "string", "maxLength": 120 },
+        "studentClass": { "type": "string", "maxLength": 60 },
+        "parentWhatsapp": { "type": "string", "maxLength": 30 },
+        "answers": { "type": "object" },
+        "score": { "type": "number" },
+        "maxScore": { "type": "number" },
+        "percentage": { "type": "number" },
+        "correctCount": { "type": "number" },
+        "wrongCount": { "type": "number" },
+        "unansweredCount": { "type": "number" },
+        "durationSeconds": { "type": "number" },
+        "startedAtIso": { "type": "string", "maxLength": 50 },
+        "submittedAtIso": { "type": "string", "maxLength": 50 },
+        "gradedDetails": { "type": "array" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["quizId", "quizTitle", "studentName", "studentClass", "score", "maxScore", "percentage", "correctCount", "wrongCount", "unansweredCount", "submittedAtIso", "createdAt"]
+    },
+    "WaGroupItem": {
+      "title": "WaGroupItem",
+      "description": "Admin-only WhatsApp group record synced from Fonnte.",
+      "type": "object",
+      "properties": {
+        "groupId": { "type": "string", "maxLength": 128 },
+        "name": { "type": "string", "maxLength": 200 },
+        "pinned": { "type": "boolean" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["groupId", "name", "pinned", "updatedAt"]
+    },
+    "WaTemplate": {
+      "title": "WaTemplate",
+      "description": "Admin-only reusable WhatsApp Center message template.",
+      "type": "object",
+      "properties": {
+        "name": { "type": "string", "maxLength": 150 },
+        "category": { "type": "string", "maxLength": 80 },
+        "content": { "type": "string", "maxLength": 4000 },
+        "isEnabled": { "type": "boolean" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["name", "category", "content", "isEnabled", "createdAt", "updatedAt"]
+    },
+    "WaCampaign": {
+      "title": "WaCampaign",
+      "description": "Admin-only mass WhatsApp Center broadcast campaign.",
+      "type": "object",
+      "properties": {
+        "title": { "type": "string", "maxLength": 180 },
+        "status": { "type": "string", "enum": ["draft", "running", "paused", "completed"], "maxLength": 30 },
+        "totalCount": { "type": "number" },
+        "sentCount": { "type": "number" },
+        "failedCount": { "type": "number" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["title", "status", "totalCount", "sentCount", "failedCount", "createdAt", "updatedAt"]
+    },
+    "WaSetting": {
+      "title": "WaSetting",
+      "description": "Admin-only WhatsApp Center automation & queue configuration (never stores API tokens).",
+      "type": "object",
+      "properties": {
+        "settingKey": { "type": "string", "maxLength": 80 },
+        "delaySeconds": { "type": "number" },
+        "batchSize": { "type": "number" },
+        "maxRetries": { "type": "number" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["settingKey", "delaySeconds", "batchSize", "maxRetries", "updatedAt"]
+    },
+    "AiKnowledgeItem": {
+      "title": "AiKnowledgeItem",
+      "description": "Official institutional knowledge base entry managed by Admin for TOMOYO ASISTEN.",
+      "type": "object",
+      "properties": {
+        "title": { "type": "string", "minLength": 1, "maxLength": 180 },
+        "category": { "type": "string", "minLength": 1, "maxLength": 80 },
+        "content": { "type": "string", "minLength": 1, "maxLength": 6000 },
+        "isActive": { "type": "boolean" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["title", "category", "content", "isActive", "createdAt", "updatedAt"]
+    },
+    "AiInstructionConfig": {
+      "title": "AiInstructionConfig",
+      "description": "Admin-configurable behavior instructions for TOMOYO ASISTEN (additive only; never overrides developer security rules).",
+      "type": "object",
+      "properties": {
+        "character": { "type": "string", "minLength": 1, "maxLength": 600 },
+        "languageStyle": { "type": "string", "minLength": 1, "maxLength": 600 },
+        "extraRules": { "type": "string", "maxLength": 2000 },
+        "answerBounds": { "type": "string", "maxLength": 1500 },
+        "unavailableBehavior": { "type": "string", "maxLength": 1000 },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["character", "languageStyle", "updatedAt"]
+    },
+    "AiChatbotSetting": {
+      "title": "AiChatbotSetting",
+      "description": "Publicly readable non-secret configuration for TOMOYO ASISTEN widget and rate limits (never stores API keys).",
+      "type": "object",
+      "properties": {
+        "enabled": { "type": "boolean" },
+        "botName": { "type": "string", "minLength": 1, "maxLength": 80 },
+        "tagline": { "type": "string", "maxLength": 120 },
+        "description": { "type": "string", "maxLength": 300 },
+        "welcomeMessage": { "type": "string", "minLength": 1, "maxLength": 1000 },
+        "suggestedQuestions": { "type": "array" },
+        "adminWhatsapp": { "type": "string", "minLength": 8, "maxLength": 30 },
+        "publicEnabled": { "type": "boolean" },
+        "adminEnabled": { "type": "boolean" },
+        "allowPublicStudentCount": { "type": "boolean" },
+        "maxRequestsPerSession": { "type": "number" },
+        "maxInputLength": { "type": "number" },
+        "maxOutputTokens": { "type": "number" },
+        "dailyRequestLimit": { "type": "number" },
+        "monthlyRequestLimit": { "type": "number" },
+        "model": { "type": "string", "minLength": 1, "maxLength": 80 },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": [
+        "enabled",
+        "botName",
+        "welcomeMessage",
+        "suggestedQuestions",
+        "adminWhatsapp",
+        "publicEnabled",
+        "adminEnabled",
+        "allowPublicStudentCount",
+        "maxRequestsPerSession",
+        "maxInputLength",
+        "maxOutputTokens",
+        "dailyRequestLimit",
+        "monthlyRequestLimit",
+        "model",
+        "updatedAt"
+      ]
+    },
+    "AiUsageDaily": {
+      "title": "AiUsageDaily",
+      "description": "Admin-only aggregate daily Groq AI API usage metrics (zero visitor transcripts stored).",
+      "type": "object",
+      "properties": {
+        "dateKey": { "type": "string", "minLength": 10, "maxLength": 10 },
+        "totalRequests": { "type": "number" },
+        "publicRequests": { "type": "number" },
+        "adminRequests": { "type": "number" },
+        "failedRequests": { "type": "number" },
+        "inputTokens": { "type": "number" },
+        "outputTokens": { "type": "number" },
+        "estimatedCostUsd": { "type": "number" },
+        "sessionCount": { "type": "number" },
+        "model": { "type": "string", "maxLength": 80 },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": [
+        "dateKey",
+        "totalRequests",
+        "publicRequests",
+        "adminRequests",
+        "failedRequests",
+        "inputTokens",
+        "outputTokens",
+        "estimatedCostUsd",
+        "sessionCount",
+        "model",
+        "updatedAt"
+      ]
+    }
+  },
+  "firestore": {
+    "/parents/{parentId}": {
+      "schema": { "$ref": "#/entities/ParentProfile" },
+      "description": "Parent accounts keyed by Firebase Auth UID."
+    },
+    "/students/{studentId}": {
+      "schema": { "$ref": "#/entities/StudentRegistration" },
+      "description": "Student registrations and enrollment statuses."
+    },
+    "/packages/{packageId}": {
+      "schema": { "$ref": "#/entities/LearningPackage" },
+      "description": "Official TOMOYO learning packages managed via CMS."
+    },
+    "/branches/{branchId}": {
+      "schema": { "$ref": "#/entities/BranchLocation" },
+      "description": "Official TOMOYO branches managed via CMS."
+    },
+    "/teachers/{teacherId}": {
+      "schema": { "$ref": "#/entities/TeacherProfile" },
+      "description": "Official TOMOYO teachers managed via CMS."
+    },
+    "/siteContent/{docId}": {
+      "schema": { "$ref": "#/entities/SiteContent" },
+      "description": "CMS sections (about, philosophy, founder, contact, general)."
+    },
+    "/gallery/{itemId}": {
+      "schema": { "$ref": "#/entities/GalleryItem" },
+      "description": "CMS photo gallery items."
+    },
+    "/announcements/{itemId}": {
+      "schema": { "$ref": "#/entities/AnnouncementItem" },
+      "description": "CMS public announcements."
+    },
+    "/schedules/{itemId}": {
+      "schema": { "$ref": "#/entities/ScheduleItem" },
+      "description": "CMS learning schedules."
+    },
+    "/payments/{paymentId}": {
+      "schema": { "$ref": "#/entities/PaymentRecord" },
+      "description": "Manual payment logs managed by Admin."
+    },
+    "/notificationLogs/{logId}": {
+      "schema": { "$ref": "#/entities/NotificationLog" },
+      "description": "Sanitized WhatsApp notification logs."
+    },
+    "/quizzes/{quizId}": {
+      "schema": { "$ref": "#/entities/PublicQuiz" },
+      "description": "Published quiz metadata without answer keys."
+    },
+    "/quizKeys/{quizId}": {
+      "schema": { "$ref": "#/entities/QuizKey" },
+      "description": "Admin-only answer keys for quizzes."
+    },
+    "/quizAttempts/{attemptId}": {
+      "schema": { "$ref": "#/entities/QuizAttempt" },
+      "description": "Admin-only student quiz attempts and scores."
+    },
+    "/waGroups/{groupId}": {
+      "schema": { "$ref": "#/entities/WaGroupItem" },
+      "description": "Admin-only synced WhatsApp groups."
+    },
+    "/waTemplates/{templateId}": {
+      "schema": { "$ref": "#/entities/WaTemplate" },
+      "description": "Admin-only WhatsApp Center templates."
+    },
+    "/waCampaigns/{campaignId}": {
+      "schema": { "$ref": "#/entities/WaCampaign" },
+      "description": "Admin-only WhatsApp Center mass campaigns."
+    },
+    "/waSettings/{settingId}": {
+      "schema": { "$ref": "#/entities/WaSetting" },
+      "description": "Admin-only WhatsApp Center queue and automation settings."
+    },
+    "/aiKnowledge/{itemId}": {
+      "schema": { "$ref": "#/entities/AiKnowledgeItem" },
+      "description": "Official AI Knowledge Center articles (active articles publicly readable for grounding; admin writes only)."
+    },
+    "/aiInstructions/{docId}": {
+      "schema": { "$ref": "#/entities/AiInstructionConfig" },
+      "description": "Admin-only AI behavioral instruction overrides."
+    },
+    "/aiSettings/{docId}": {
+      "schema": { "$ref": "#/entities/AiChatbotSetting" },
+      "description": "Chatbot public config at /aiSettings/chatbot (admin writes only)."
+    },
+    "/aiUsageDaily/{dateKey}": {
+      "schema": { "$ref": "#/entities/AiUsageDaily" },
+      "description": "Admin-only aggregate daily token/request usage counters (no transcripts)."
+    }
+  }
+}

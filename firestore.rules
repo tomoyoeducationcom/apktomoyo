@@ -1,0 +1,731 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Pillar 0: Global Safety Net
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // Pillar 3: Primitive Helpers
+    function isValidId(id) {
+      return id is string && id.size() > 0 && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    function incoming() {
+      return request.resource.data;
+    }
+
+    function existing() {
+      return resource.data;
+    }
+
+    function isSignedIn() {
+      return request.auth != null && request.auth.token.email_verified == true;
+    }
+
+    function isAdmin() {
+      return isSignedIn()
+        && request.auth.uid == 'Tlqf2dNHYCRuYmxgEbHFa783iDs1'
+        && request.auth.token.email == 'tomoyoeducation.com@gmail.com';
+    }
+
+    function isOwner(uid) {
+      return isSignedIn() && request.auth.uid == uid;
+    }
+
+    function isValidParent(data, parentId) {
+      return data.keys().hasAll(['uid', 'displayName', 'email', 'createdAt', 'updatedAt'])
+        && data.keys().hasOnly(['uid', 'displayName', 'email', 'phone', 'photoURL', 'createdAt', 'updatedAt'])
+        && data.uid is string && data.uid == parentId && data.uid.size() > 0 && data.uid.size() <= 128
+        && data.displayName is string && data.displayName.size() >= 1 && data.displayName.size() <= 120
+        && data.email is string && data.email.size() >= 3 && data.email.size() <= 160
+        && (!('phone' in data) || (data.phone is string && data.phone.size() <= 30))
+        && (!('photoURL' in data) || (data.photoURL is string && data.photoURL.size() <= 500))
+        && data.createdAt is timestamp
+        && data.updatedAt is timestamp;
+    }
+
+    function isValidStudent(data) {
+      return data.keys().hasAll([
+          'parentId', 'parentName', 'parentEmail', 'parentPhone',
+          'childName', 'gradeLevel', 'packageId', 'packageName',
+          'branchId', 'branchName', 'status', 'academicStatus',
+          'createdAt', 'updatedAt'
+        ])
+        && data.keys().hasOnly([
+          'parentId', 'parentName', 'parentEmail', 'parentPhone',
+          'childName', 'birthDate', 'schoolOrigin', 'studentAddress',
+          'childPhotoUrl', 'childGender', 'gradeLevel', 'packageId', 'packageName',
+          'branchId', 'branchName', 'registrationChannel', 'billingAmount', 'initialPaymentStatus',
+          'registeredAtIso', 'nextDueAtIso', 'lastDueNotifiedIso', 'dueConfirmedIso',
+          'status', 'academicStatus', 'notes', 'adminNotes', 'createdAt', 'updatedAt'
+        ])
+        && data.parentId is string && data.parentId.size() > 0 && data.parentId.size() <= 128
+        && data.parentName is string && data.parentName.size() >= 1 && data.parentName.size() <= 120
+        && data.parentEmail is string && data.parentEmail.size() <= 160
+        && data.parentPhone is string && data.parentPhone.size() >= 8 && data.parentPhone.size() <= 30
+        && data.childName is string && data.childName.size() >= 2 && data.childName.size() <= 120
+        && (!('birthDate' in data) || (data.birthDate is string && data.birthDate.size() <= 20))
+        && (!('schoolOrigin' in data) || (data.schoolOrigin is string && data.schoolOrigin.size() <= 120))
+        && (!('studentAddress' in data) || (data.studentAddress is string && data.studentAddress.size() <= 250))
+        && (!('childPhotoUrl' in data) || (data.childPhotoUrl is string && data.childPhotoUrl.size() <= 500))
+        && (!('childGender' in data) || data.childGender in ['Laki-laki', 'Perempuan'])
+        && data.gradeLevel is string && data.gradeLevel.size() >= 1 && data.gradeLevel.size() <= 60
+        && data.packageId in ['paket-1', 'paket-2', 'paket-3']
+        && data.packageName is string && data.packageName.size() >= 2 && data.packageName.size() <= 120
+        && data.branchId in ['indramayu-kota', 'terisi']
+        && data.branchName is string && data.branchName.size() >= 2 && data.branchName.size() <= 120
+        && (!('registrationChannel' in data) || data.registrationChannel in ['online', 'offline', 'migration'])
+        && (!('billingAmount' in data) || (data.billingAmount is number && data.billingAmount >= 0))
+        && (!('initialPaymentStatus' in data) || data.initialPaymentStatus in ['lunas', 'cicilan', 'belum_bayar'])
+        && (!('registeredAtIso' in data) || (data.registeredAtIso is string && data.registeredAtIso.size() <= 50))
+        && (!('nextDueAtIso' in data) || (data.nextDueAtIso is string && data.nextDueAtIso.size() <= 50))
+        && (!('lastDueNotifiedIso' in data) || (data.lastDueNotifiedIso is string && data.lastDueNotifiedIso.size() <= 50))
+        && (!('dueConfirmedIso' in data) || (data.dueConfirmedIso is string && data.dueConfirmedIso.size() <= 50))
+        && data.status in ['pending', 'approved', 'rejected']
+        && data.academicStatus in ['menunggu', 'aktif', 'lulus', 'nonaktif']
+        && (!('notes' in data) || (data.notes is string && data.notes.size() <= 500))
+        && (!('adminNotes' in data) || (data.adminNotes is string && data.adminNotes.size() <= 500))
+        && data.createdAt is timestamp
+        && data.updatedAt is timestamp;
+    }
+
+    function isValidPackage(data) {
+      return data.keys().hasAll(['slug', 'order', 'title', 'levelRange', 'programType', 'subjects', 'isPublished', 'updatedAt'])
+        && data.keys().hasOnly([
+          'slug', 'order', 'title', 'levelRange', 'programType', 'subjects',
+          'priceLabel', 'priceNote', 'pricePusat', 'priceCabang',
+          'pricePusatNote', 'priceCabangNote', 'description', 'isPublished', 'updatedAt'
+        ])
+        && data.slug is string && data.slug.size() >= 1 && data.slug.size() <= 40
+        && data.order is number
+        && data.title is string && data.title.size() >= 1 && data.title.size() <= 100
+        && data.levelRange is string && data.levelRange.size() >= 1 && data.levelRange.size() <= 100
+        && data.programType is string && data.programType.size() >= 1 && data.programType.size() <= 100
+        && data.subjects is list && data.subjects.size() <= 20
+        && (!('priceLabel' in data) || (data.priceLabel is string && data.priceLabel.size() <= 80))
+        && (!('priceNote' in data) || (data.priceNote is string && data.priceNote.size() <= 200))
+        && (!('pricePusat' in data) || (data.pricePusat is number && data.pricePusat >= 0))
+        && (!('priceCabang' in data) || (data.priceCabang is number && data.priceCabang >= 0))
+        && (!('pricePusatNote' in data) || (data.pricePusatNote is string && data.pricePusatNote.size() <= 200))
+        && (!('priceCabangNote' in data) || (data.priceCabangNote is string && data.priceCabangNote.size() <= 200))
+        && (!('description' in data) || (data.description is string && data.description.size() <= 600))
+        && data.isPublished is bool
+        && data.updatedAt is timestamp;
+    }
+
+    function isValidBranch(data) {
+      return data.keys().hasAll(['slug', 'order', 'name', 'roleLabel', 'mapsUrl', 'isPublished', 'updatedAt'])
+        && data.keys().hasOnly(['slug', 'order', 'name', 'roleLabel', 'mapsUrl', 'latitude', 'longitude', 'isPublished', 'updatedAt'])
+        && data.slug is string && data.slug.size() >= 1 && data.slug.size() <= 40
+        && data.order is number
+        && data.name is string && data.name.size() >= 1 && data.name.size() <= 150
+        && data.roleLabel is string && data.roleLabel.size() >= 1 && data.roleLabel.size() <= 40
+        && data.mapsUrl is string && data.mapsUrl.size() >= 5 && data.mapsUrl.size() <= 500
+        && (!('latitude' in data) || data.latitude is number)
+        && (!('longitude' in data) || data.longitude is number)
+        && data.isPublished is bool
+        && data.updatedAt is timestamp;
+    }
+
+    function isValidTeacher(data) {
+      return data.keys().hasAll(['order', 'name', 'isPublished', 'updatedAt'])
+        && data.keys().hasOnly(['order', 'name', 'description', 'photoUrl', 'isPublished', 'updatedAt'])
+        && data.order is number
+        && data.name is string && data.name.size() >= 1 && data.name.size() <= 150
+        && (!('description' in data) || (data.description is string && data.description.size() <= 600))
+        && (!('photoUrl' in data) || (data.photoUrl is string && data.photoUrl.size() <= 500))
+        && data.isPublished is bool
+        && data.updatedAt is timestamp;
+    }
+
+    function isValidSiteContent(data) {
+      return data.keys().hasAll(['sectionKey', 'isPublished', 'updatedAt'])
+        && data.keys().hasOnly([
+          'sectionKey', 'title', 'subtitle', 'body', 'vision', 'mission',
+          'founderName', 'founderRole', 'founderPhotoUrl', 'founderBio',
+          'email', 'whatsappDisplay', 'whatsappUrl', 'instagramUrl', 'facebookUrl',
+          'isPublished', 'updatedAt'
+        ])
+        && data.sectionKey is string && data.sectionKey.size() >= 1 && data.sectionKey.size() <= 60
+        && (!('title' in data) || (data.title is string && data.title.size() <= 200))
+        && (!('subtitle' in data) || (data.subtitle is string && data.subtitle.size() <= 400))
+        && (!('body' in data) || (data.body is string && data.body.size() <= 4000))
+        && (!('vision' in data) || (data.vision is string && data.vision.size() <= 1000))
+        && (!('mission' in data) || (data.mission is string && data.mission.size() <= 2000))
+        && (!('founderName' in data) || (data.founderName is string && data.founderName.size() <= 150))
+        && (!('founderRole' in data) || (data.founderRole is string && data.founderRole.size() <= 100))
+        && (!('founderPhotoUrl' in data) || (data.founderPhotoUrl is string && data.founderPhotoUrl.size() <= 500))
+        && (!('founderBio' in data) || (data.founderBio is string && data.founderBio.size() <= 2000))
+        && (!('email' in data) || (data.email is string && data.email.size() <= 160))
+        && (!('whatsappDisplay' in data) || (data.whatsappDisplay is string && data.whatsappDisplay.size() <= 40))
+        && (!('whatsappUrl' in data) || (data.whatsappUrl is string && data.whatsappUrl.size() <= 300))
+        && (!('instagramUrl' in data) || (data.instagramUrl is string && data.instagramUrl.size() <= 300))
+        && (!('facebookUrl' in data) || (data.facebookUrl is string && data.facebookUrl.size() <= 300))
+        && data.isPublished is bool
+        && data.updatedAt is timestamp;
+    }
+
+    function isValidGallery(data) {
+      return data.keys().hasAll(['title', 'imageUrl', 'isPublished', 'createdAt', 'updatedAt'])
+        && data.keys().hasOnly(['title', 'caption', 'imageUrl', 'category', 'isPublished', 'createdAt', 'updatedAt'])
+        && data.title is string && data.title.size() >= 1 && data.title.size() <= 150
+        && (!('caption' in data) || (data.caption is string && data.caption.size() <= 500))
+        && data.imageUrl is string && data.imageUrl.size() >= 5 && data.imageUrl.size() <= 500
+        && (!('category' in data) || (data.category is string && data.category.size() <= 60))
+        && data.isPublished is bool
+        && data.createdAt is timestamp
+        && data.updatedAt is timestamp;
+    }
+
+    function isValidAnnouncement(data) {
+      return data.keys().hasAll(['title', 'content', 'isPublished', 'createdAt', 'updatedAt'])
+        && data.keys().hasOnly(['title', 'content', 'imageUrl', 'dateLabel', 'isPublished', 'createdAt', 'updatedAt'])
+        && data.title is string && data.title.size() >= 1 && data.title.size() <= 200
+        && data.content is string && data.content.size() >= 1 && data.content.size() <= 3000
+        && (!('imageUrl' in data) || (data.imageUrl is string && data.imageUrl.size() <= 500))
+        && (!('dateLabel' in data) || (data.dateLabel is string && data.dateLabel.size() <= 60))
+        && data.isPublished is bool
+        && data.createdAt is timestamp
+        && data.updatedAt is timestamp;
+    }
+
+    function isValidSchedule(data) {
+      return data.keys().hasAll(['title', 'dayTime', 'isPublished', 'createdAt', 'updatedAt'])
+        && data.keys().hasOnly(['title', 'packageId', 'branchId', 'dayTime', 'notes', 'isPublished', 'createdAt', 'updatedAt'])
+        && data.title is string && data.title.size() >= 1 && data.title.size() <= 150
+        && (!('packageId' in data) || (data.packageId is string && data.packageId.size() <= 40))
+        && (!('branchId' in data) || (data.branchId is string && data.branchId.size() <= 40))
+        && data.dayTime is string && data.dayTime.size() >= 1 && data.dayTime.size() <= 150
+        && (!('notes' in data) || (data.notes is string && data.notes.size() <= 500))
+        && data.isPublished is bool
+        && data.createdAt is timestamp
+        && data.updatedAt is timestamp;
+    }
+
+    function isValidPayment(data) {
+      return data.keys().hasAll(['studentId', 'parentId', 'childName', 'amount', 'method', 'periodLabel', 'status', 'recordedBy', 'createdAt', 'updatedAt'])
+        && data.keys().hasOnly(['studentId', 'parentId', 'childName', 'amount', 'method', 'periodLabel', 'dueDateIso', 'status', 'notes', 'recordedBy', 'createdAt', 'updatedAt'])
+        && data.studentId is string && data.studentId.size() >= 1 && data.studentId.size() <= 128
+        && data.parentId is string && data.parentId.size() >= 1 && data.parentId.size() <= 128
+        && data.childName is string && data.childName.size() >= 1 && data.childName.size() <= 120
+        && data.amount is number && data.amount >= 0
+        && data.method is string && data.method.size() >= 1 && data.method.size() <= 60
+        && data.periodLabel is string && data.periodLabel.size() >= 1 && data.periodLabel.size() <= 80
+        && (!('dueDateIso' in data) || (data.dueDateIso is string && data.dueDateIso.size() <= 50))
+        && data.status in ['lunas', 'cicilan', 'belum_bayar']
+        && (!('notes' in data) || (data.notes is string && data.notes.size() <= 500))
+        && data.recordedBy is string && data.recordedBy.size() >= 1 && data.recordedBy.size() <= 128
+        && data.createdAt is timestamp
+        && data.updatedAt is timestamp;
+    }
+
+    function isValidNotificationLog(data) {
+      return data.keys().hasAll(['registrationId', 'parentId', 'target', 'status', 'messagePreview', 'createdAt'])
+        && data.keys().hasOnly(['registrationId', 'parentId', 'type', 'target', 'status', 'messagePreview', 'providerDetail', 'createdAt'])
+        && data.registrationId is string && data.registrationId.size() >= 1 && data.registrationId.size() <= 128
+        && data.parentId is string && data.parentId.size() >= 1 && data.parentId.size() <= 128
+        && (!('type' in data) || data.type in ['registration', 'offline_registration', 'payment_due', 'manual_reminder'])
+        && data.target is string && data.target.size() >= 1 && data.target.size() <= 30
+        && data.status in ['sent', 'failed', 'unconfigured', 'skipped_duplicate']
+        && data.messagePreview is string && data.messagePreview.size() >= 1 && data.messagePreview.size() <= 500
+        && (!('providerDetail' in data) || (data.providerDetail is string && data.providerDetail.size() <= 400))
+        && data.createdAt is timestamp;
+    }
+
+    function isValidPublicQuiz(data) {
+      return data.keys().hasAll(['title', 'status', 'isPublished', 'questionsCount', 'questions', 'createdAt', 'updatedAt'])
+        && data.keys().hasOnly([
+          'title', 'description', 'instructions', 'targetClass', 'status',
+          'isPublished', 'timeLimitMinutes', 'maxAttempts', 'startAtIso', 'endAtIso',
+          'questionsCount', 'totalPoints', 'questions', 'createdAt', 'updatedAt'
+        ])
+        && data.title is string && data.title.size() >= 1 && data.title.size() <= 180
+        && (!('description' in data) || (data.description is string && data.description.size() <= 1000))
+        && (!('instructions' in data) || (data.instructions is string && data.instructions.size() <= 1500))
+        && (!('targetClass' in data) || (data.targetClass is string && data.targetClass.size() <= 60))
+        && data.status in ['draft', 'published', 'disabled']
+        && data.isPublished is bool
+        && (!('timeLimitMinutes' in data) || (data.timeLimitMinutes is number && data.timeLimitMinutes >= 0))
+        && (!('maxAttempts' in data) || (data.maxAttempts is number && data.maxAttempts >= 0))
+        && (!('startAtIso' in data) || (data.startAtIso is string && data.startAtIso.size() <= 50))
+        && (!('endAtIso' in data) || (data.endAtIso is string && data.endAtIso.size() <= 50))
+        && data.questionsCount is number && data.questionsCount >= 1 && data.questionsCount <= 100
+        && (!('totalPoints' in data) || (data.totalPoints is number && data.totalPoints >= 0))
+        && data.questions is list && data.questions.size() >= 1 && data.questions.size() <= 100
+        && data.questions[0] is map
+        && data.createdAt is timestamp
+        && data.updatedAt is timestamp;
+    }
+
+    function isValidQuizKey(data) {
+      return data.keys().hasAll(['quizId', 'questionCount', 'answers', 'updatedAt'])
+        && data.keys().hasOnly(['quizId', 'questionCount', 'answers', 'updatedAt'])
+        && data.quizId is string && data.quizId.size() >= 1 && data.quizId.size() <= 128
+        && data.questionCount is number && data.questionCount >= 1 && data.questionCount <= 100
+        && data.answers is map && data.answers.size() >= 1 && data.answers.size() <= 100
+        && data.updatedAt is timestamp;
+    }
+
+    function isValidQuizAttempt(data) {
+      return data.keys().hasAll([
+          'quizId', 'quizTitle', 'studentName', 'studentClass', 'score', 'maxScore',
+          'percentage', 'correctCount', 'wrongCount', 'unansweredCount',
+          'submittedAtIso', 'createdAt'
+        ])
+        && data.keys().hasOnly([
+          'quizId', 'quizTitle', 'studentName', 'studentClass', 'parentWhatsapp',
+          'answers', 'score', 'maxScore', 'percentage',
+          'correctCount', 'wrongCount', 'unansweredCount',
+          'durationSeconds', 'startedAtIso', 'submittedAtIso', 'gradedDetails', 'createdAt'
+        ])
+        && data.quizId is string && data.quizId.size() >= 1 && data.quizId.size() <= 128
+        && data.quizTitle is string && data.quizTitle.size() >= 1 && data.quizTitle.size() <= 180
+        && data.studentName is string && data.studentName.size() >= 1 && data.studentName.size() <= 120
+        && data.studentClass is string && data.studentClass.size() >= 1 && data.studentClass.size() <= 60
+        && (!('parentWhatsapp' in data) || (data.parentWhatsapp is string && data.parentWhatsapp.size() <= 30))
+        && (!('answers' in data) || (data.answers is map && data.answers.size() <= 100))
+        && data.score is number && data.score >= 0
+        && data.maxScore is number && data.maxScore >= 0
+        && data.percentage is number && data.percentage >= 0 && data.percentage <= 100
+        && data.correctCount is number && data.correctCount >= 0
+        && data.wrongCount is number && data.wrongCount >= 0
+        && data.unansweredCount is number && data.unansweredCount >= 0
+        && (!('durationSeconds' in data) || (data.durationSeconds is number && data.durationSeconds >= 0))
+        && (!('startedAtIso' in data) || (data.startedAtIso is string && data.startedAtIso.size() <= 50))
+        && data.submittedAtIso is string && data.submittedAtIso.size() <= 50
+        && (!('gradedDetails' in data) || (data.gradedDetails is list && data.gradedDetails.size() <= 100))
+        && data.createdAt is timestamp;
+    }
+
+    function isValidWaGroup(data) {
+      return data.keys().hasAll(['groupId', 'name', 'pinned', 'updatedAt'])
+        && data.keys().hasOnly(['groupId', 'name', 'pinned', 'updatedAt'])
+        && data.groupId is string && data.groupId.size() >= 1 && data.groupId.size() <= 128
+        && data.name is string && data.name.size() >= 1 && data.name.size() <= 200
+        && data.pinned is bool
+        && data.updatedAt is timestamp;
+    }
+
+    function isValidWaTemplate(data) {
+      return data.keys().hasAll(['name', 'category', 'content', 'isEnabled', 'createdAt', 'updatedAt'])
+        && data.keys().hasOnly(['name', 'category', 'content', 'isEnabled', 'createdAt', 'updatedAt'])
+        && data.name is string && data.name.size() >= 1 && data.name.size() <= 150
+        && data.category is string && data.category.size() >= 1 && data.category.size() <= 80
+        && data.content is string && data.content.size() >= 1 && data.content.size() <= 4000
+        && data.isEnabled is bool
+        && data.createdAt is timestamp
+        && data.updatedAt is timestamp;
+    }
+
+    function isValidWaCampaign(data) {
+      return data.keys().hasAll(['title', 'status', 'totalCount', 'sentCount', 'failedCount', 'createdAt', 'updatedAt'])
+        && data.keys().hasOnly(['title', 'status', 'totalCount', 'sentCount', 'failedCount', 'createdAt', 'updatedAt'])
+        && data.title is string && data.title.size() >= 1 && data.title.size() <= 180
+        && data.status in ['draft', 'running', 'paused', 'completed']
+        && data.totalCount is number && data.totalCount >= 0
+        && data.sentCount is number && data.sentCount >= 0
+        && data.failedCount is number && data.failedCount >= 0
+        && data.createdAt is timestamp
+        && data.updatedAt is timestamp;
+    }
+
+    function isValidWaSetting(data) {
+      return data.keys().hasAll(['settingKey', 'delaySeconds', 'batchSize', 'maxRetries', 'updatedAt'])
+        && data.keys().hasOnly(['settingKey', 'delaySeconds', 'batchSize', 'maxRetries', 'updatedAt'])
+        && data.settingKey is string && data.settingKey.size() >= 1 && data.settingKey.size() <= 80
+        && data.delaySeconds is number && data.delaySeconds >= 1 && data.delaySeconds <= 120
+        && data.batchSize is number && data.batchSize >= 1 && data.batchSize <= 50
+        && data.maxRetries is number && data.maxRetries >= 0 && data.maxRetries <= 5
+        && data.updatedAt is timestamp;
+    }
+
+    function isValidAiKnowledge(data) {
+      return data.keys().hasAll(['title', 'category', 'content', 'isActive', 'createdAt', 'updatedAt'])
+        && data.keys().hasOnly(['title', 'category', 'content', 'isActive', 'createdAt', 'updatedAt'])
+        && data.title is string && data.title.size() >= 1 && data.title.size() <= 180
+        && data.category is string && data.category.size() >= 1 && data.category.size() <= 80
+        && data.content is string && data.content.size() >= 1 && data.content.size() <= 6000
+        && data.isActive is bool
+        && data.createdAt is timestamp
+        && data.updatedAt is timestamp;
+    }
+
+    function isValidAiInstruction(data) {
+      return data.keys().hasAll(['character', 'languageStyle', 'updatedAt'])
+        && data.keys().hasOnly(['character', 'languageStyle', 'extraRules', 'answerBounds', 'unavailableBehavior', 'updatedAt'])
+        && data.character is string && data.character.size() >= 1 && data.character.size() <= 600
+        && data.languageStyle is string && data.languageStyle.size() >= 1 && data.languageStyle.size() <= 600
+        && (!('extraRules' in data) || (data.extraRules is string && data.extraRules.size() <= 2000))
+        && (!('answerBounds' in data) || (data.answerBounds is string && data.answerBounds.size() <= 1500))
+        && (!('unavailableBehavior' in data) || (data.unavailableBehavior is string && data.unavailableBehavior.size() <= 1000))
+        && data.updatedAt is timestamp;
+    }
+
+    function isValidAiSetting(data) {
+      return data.keys().hasAll([
+          'enabled', 'botName', 'welcomeMessage', 'suggestedQuestions',
+          'adminWhatsapp', 'publicEnabled', 'adminEnabled', 'allowPublicStudentCount',
+          'maxRequestsPerSession', 'maxInputLength', 'maxOutputTokens',
+          'dailyRequestLimit', 'monthlyRequestLimit', 'model', 'updatedAt'
+        ])
+        && data.keys().hasOnly([
+          'enabled', 'botName', 'tagline', 'description', 'welcomeMessage', 'suggestedQuestions',
+          'adminWhatsapp', 'publicEnabled', 'adminEnabled', 'allowPublicStudentCount',
+          'maxRequestsPerSession', 'maxInputLength', 'maxOutputTokens',
+          'dailyRequestLimit', 'monthlyRequestLimit', 'model', 'updatedAt'
+        ])
+        && data.enabled is bool
+        && data.botName is string && data.botName.size() >= 1 && data.botName.size() <= 80
+        && (!('tagline' in data) || (data.tagline is string && data.tagline.size() <= 120))
+        && (!('description' in data) || (data.description is string && data.description.size() <= 300))
+        && data.welcomeMessage is string && data.welcomeMessage.size() >= 1 && data.welcomeMessage.size() <= 1000
+        && data.suggestedQuestions is list && data.suggestedQuestions.size() <= 8
+        && (data.suggestedQuestions.size() == 0 || data.suggestedQuestions[0] is string)
+        && data.adminWhatsapp is string && data.adminWhatsapp.size() >= 8 && data.adminWhatsapp.size() <= 30
+        && data.publicEnabled is bool
+        && data.adminEnabled is bool
+        && data.allowPublicStudentCount is bool
+        && data.maxRequestsPerSession is number && data.maxRequestsPerSession >= 1 && data.maxRequestsPerSession <= 100
+        && data.maxInputLength is number && data.maxInputLength >= 50 && data.maxInputLength <= 2000
+        && data.maxOutputTokens is number && data.maxOutputTokens >= 100 && data.maxOutputTokens <= 4000
+        && data.dailyRequestLimit is number && data.dailyRequestLimit >= 1 && data.dailyRequestLimit <= 10000
+        && data.monthlyRequestLimit is number && data.monthlyRequestLimit >= 1 && data.monthlyRequestLimit <= 200000
+        && data.model is string && data.model.size() >= 1 && data.model.size() <= 80
+        && data.updatedAt is timestamp;
+    }
+
+    function isValidAiUsageDaily(data) {
+      return data.keys().hasAll([
+          'dateKey', 'totalRequests', 'publicRequests', 'adminRequests',
+          'failedRequests', 'inputTokens', 'outputTokens', 'estimatedCostUsd',
+          'sessionCount', 'model', 'updatedAt'
+        ])
+        && data.keys().hasOnly([
+          'dateKey', 'totalRequests', 'publicRequests', 'adminRequests',
+          'failedRequests', 'inputTokens', 'outputTokens', 'estimatedCostUsd',
+          'sessionCount', 'model', 'updatedAt'
+        ])
+        && data.dateKey is string && data.dateKey.size() == 10
+        && data.totalRequests is number && data.totalRequests >= 0
+        && data.publicRequests is number && data.publicRequests >= 0
+        && data.adminRequests is number && data.adminRequests >= 0
+        && data.failedRequests is number && data.failedRequests >= 0
+        && data.inputTokens is number && data.inputTokens >= 0
+        && data.outputTokens is number && data.outputTokens >= 0
+        && data.estimatedCostUsd is number && data.estimatedCostUsd >= 0
+        && data.sessionCount is number && data.sessionCount >= 0
+        && data.model is string && data.model.size() >= 1 && data.model.size() <= 80
+        && data.updatedAt is timestamp;
+    }
+
+    // Connection test doc
+    match /test/{docId} {
+      allow get: if docId == 'connection';
+    }
+
+    // Parents Collection
+    match /parents/{parentId} {
+      allow get: if isValidId(parentId) && (isOwner(parentId) || isAdmin());
+      allow list: if isAdmin();
+      allow create: if isValidId(parentId)
+        && isOwner(parentId)
+        && isValidParent(incoming(), parentId)
+        && incoming().createdAt <= request.time
+        && incoming().updatedAt <= request.time;
+      allow update: if isValidId(parentId)
+        && isValidParent(incoming(), parentId)
+        && incoming().createdAt == existing().createdAt
+        && incoming().updatedAt <= request.time
+        && (
+          isAdmin() ||
+          (isOwner(parentId) && incoming().diff(existing()).affectedKeys().hasOnly(['displayName', 'phone', 'photoURL', 'updatedAt']))
+        );
+      allow delete: if isValidId(parentId) && isAdmin();
+    }
+
+    // Students / Registrations Collection
+    match /students/{studentId} {
+      allow get: if isValidId(studentId) && (isAdmin() || (isSignedIn() && existing().parentId == request.auth.uid));
+      allow list: if isAdmin() || (isSignedIn() && existing().parentId == request.auth.uid);
+      allow create: if isValidId(studentId)
+        && isSignedIn()
+        && isValidStudent(incoming())
+        && incoming().createdAt <= request.time
+        && incoming().updatedAt <= request.time
+        && (
+          isAdmin() ||
+          (incoming().parentId == request.auth.uid
+            && incoming().parentEmail.size() >= 3
+            && (!('registrationChannel' in incoming()) || incoming().registrationChannel == 'online')
+            && incoming().status == 'pending'
+            && incoming().academicStatus == 'menunggu')
+        );
+      allow update: if isValidId(studentId)
+        && isValidStudent(incoming())
+        && incoming().parentId == existing().parentId
+        && incoming().createdAt == existing().createdAt
+        && incoming().updatedAt <= request.time
+        && (
+          (isAdmin() && incoming().diff(existing()).affectedKeys().hasOnly([
+            'childName', 'birthDate', 'schoolOrigin', 'studentAddress',
+            'childPhotoUrl', 'childGender', 'gradeLevel', 'packageId', 'packageName',
+            'branchId', 'branchName', 'billingAmount', 'initialPaymentStatus',
+            'registeredAtIso', 'nextDueAtIso', 'lastDueNotifiedIso', 'dueConfirmedIso',
+            'status', 'academicStatus', 'parentName', 'parentPhone', 'notes', 'adminNotes', 'updatedAt'
+          ])) ||
+          (isSignedIn()
+            && existing().parentId == request.auth.uid
+            && existing().status == 'pending'
+            && incoming().status == 'pending'
+            && incoming().academicStatus == 'menunggu'
+            && incoming().diff(existing()).affectedKeys().hasOnly([
+              'childName', 'childPhotoUrl', 'childGender', 'gradeLevel', 'packageId', 'packageName',
+              'branchId', 'branchName', 'billingAmount', 'parentPhone', 'notes', 'updatedAt'
+            ]))
+        );
+      allow delete: if isValidId(studentId) && isAdmin();
+    }
+
+    // Public CMS Collections (Published read by public, write by Admin only)
+    match /packages/{packageId} {
+      allow get: if isValidId(packageId) && (resource == null || existing().isPublished == true || isAdmin());
+      allow list: if isAdmin() || existing().isPublished == true;
+      allow create: if isValidId(packageId) && isAdmin() && isValidPackage(incoming()) && incoming().updatedAt <= request.time;
+      allow update: if isValidId(packageId) && isAdmin() && isValidPackage(incoming()) && incoming().updatedAt <= request.time
+        && incoming().diff(existing()).affectedKeys().hasOnly([
+          'slug', 'order', 'title', 'levelRange', 'programType', 'subjects',
+          'priceLabel', 'priceNote', 'pricePusat', 'priceCabang',
+          'pricePusatNote', 'priceCabangNote', 'description', 'isPublished', 'updatedAt'
+        ]);
+      allow delete: if isValidId(packageId) && isAdmin();
+    }
+
+    match /branches/{branchId} {
+      allow get: if isValidId(branchId) && (resource == null || existing().isPublished == true || isAdmin());
+      allow list: if isAdmin() || existing().isPublished == true;
+      allow create: if isValidId(branchId) && isAdmin() && isValidBranch(incoming()) && incoming().updatedAt <= request.time;
+      allow update: if isValidId(branchId) && isAdmin() && isValidBranch(incoming()) && incoming().updatedAt <= request.time
+        && incoming().diff(existing()).affectedKeys().hasOnly(['slug', 'order', 'name', 'roleLabel', 'mapsUrl', 'latitude', 'longitude', 'isPublished', 'updatedAt']);
+      allow delete: if isValidId(branchId) && isAdmin();
+    }
+
+    match /teachers/{teacherId} {
+      allow get: if isValidId(teacherId) && (resource == null || existing().isPublished == true || isAdmin());
+      allow list: if isAdmin() || existing().isPublished == true;
+      allow create: if isValidId(teacherId) && isAdmin() && isValidTeacher(incoming()) && incoming().updatedAt <= request.time;
+      allow update: if isValidId(teacherId) && isAdmin() && isValidTeacher(incoming()) && incoming().updatedAt <= request.time
+        && incoming().diff(existing()).affectedKeys().hasOnly(['order', 'name', 'description', 'photoUrl', 'isPublished', 'updatedAt']);
+      allow delete: if isValidId(teacherId) && isAdmin();
+    }
+
+    match /siteContent/{docId} {
+      allow get: if isValidId(docId) && (resource == null || existing().isPublished == true || isAdmin());
+      allow list: if isAdmin() || existing().isPublished == true;
+      allow create: if isValidId(docId) && isAdmin() && isValidSiteContent(incoming()) && incoming().updatedAt <= request.time;
+      allow update: if isValidId(docId) && isAdmin() && isValidSiteContent(incoming()) && incoming().updatedAt <= request.time
+        && incoming().diff(existing()).affectedKeys().hasOnly([
+          'sectionKey', 'title', 'subtitle', 'body', 'vision', 'mission',
+          'founderName', 'founderRole', 'founderPhotoUrl', 'founderBio',
+          'email', 'whatsappDisplay', 'whatsappUrl', 'instagramUrl', 'facebookUrl',
+          'isPublished', 'updatedAt'
+        ]);
+      allow delete: if isValidId(docId) && isAdmin();
+    }
+
+    match /gallery/{itemId} {
+      allow get: if isValidId(itemId) && (resource == null || existing().isPublished == true || isAdmin());
+      allow list: if isAdmin() || existing().isPublished == true;
+      allow create: if isValidId(itemId) && isAdmin() && isValidGallery(incoming())
+        && incoming().createdAt <= request.time && incoming().updatedAt <= request.time;
+      allow update: if isValidId(itemId) && isAdmin() && isValidGallery(incoming())
+        && incoming().createdAt == existing().createdAt && incoming().updatedAt <= request.time
+        && incoming().diff(existing()).affectedKeys().hasOnly(['title', 'caption', 'imageUrl', 'category', 'isPublished', 'updatedAt']);
+      allow delete: if isValidId(itemId) && isAdmin();
+    }
+
+    match /announcements/{itemId} {
+      allow get: if isValidId(itemId) && (resource == null || existing().isPublished == true || isAdmin());
+      allow list: if isAdmin() || existing().isPublished == true;
+      allow create: if isValidId(itemId) && isAdmin() && isValidAnnouncement(incoming())
+        && incoming().createdAt <= request.time && incoming().updatedAt <= request.time;
+      allow update: if isValidId(itemId) && isAdmin() && isValidAnnouncement(incoming())
+        && incoming().createdAt == existing().createdAt && incoming().updatedAt <= request.time
+        && incoming().diff(existing()).affectedKeys().hasOnly(['title', 'content', 'imageUrl', 'dateLabel', 'isPublished', 'updatedAt']);
+      allow delete: if isValidId(itemId) && isAdmin();
+    }
+
+    match /schedules/{itemId} {
+      allow get: if isValidId(itemId) && (resource == null || existing().isPublished == true || isAdmin());
+      allow list: if isAdmin() || existing().isPublished == true;
+      allow create: if isValidId(itemId) && isAdmin() && isValidSchedule(incoming())
+        && incoming().createdAt <= request.time && incoming().updatedAt <= request.time;
+      allow update: if isValidId(itemId) && isAdmin() && isValidSchedule(incoming())
+        && incoming().createdAt == existing().createdAt && incoming().updatedAt <= request.time
+        && incoming().diff(existing()).affectedKeys().hasOnly(['title', 'packageId', 'branchId', 'dayTime', 'notes', 'isPublished', 'updatedAt']);
+      allow delete: if isValidId(itemId) && isAdmin();
+    }
+
+    // Payments Collection (Admin write, Owner or Admin read)
+    match /payments/{paymentId} {
+      allow get: if isValidId(paymentId) && (isAdmin() || (isSignedIn() && existing().parentId == request.auth.uid));
+      allow list: if isAdmin() || (isSignedIn() && existing().parentId == request.auth.uid);
+      allow create: if isValidId(paymentId) && isAdmin() && isValidPayment(incoming())
+        && incoming().createdAt <= request.time && incoming().updatedAt <= request.time;
+      allow update: if isValidId(paymentId) && isAdmin() && isValidPayment(incoming())
+        && incoming().createdAt == existing().createdAt && incoming().updatedAt <= request.time
+        && incoming().diff(existing()).affectedKeys().hasOnly([
+          'studentId', 'parentId', 'childName', 'amount', 'method',
+          'periodLabel', 'dueDateIso', 'status', 'notes', 'recordedBy', 'updatedAt'
+        ]);
+      allow delete: if isValidId(paymentId) && isAdmin();
+    }
+
+    // Notification Logs Collection (Admin read/delete, Parent or Admin create for own registration)
+    match /notificationLogs/{logId} {
+      allow get: if isValidId(logId) && isAdmin();
+      allow list: if isAdmin();
+      allow create: if isValidId(logId)
+        && isSignedIn()
+        && isValidNotificationLog(incoming())
+        && (isAdmin() || incoming().parentId == request.auth.uid)
+        && incoming().createdAt <= request.time;
+      allow update: if false;
+      allow delete: if isValidId(logId) && isAdmin();
+    }
+
+    // Online Quizzes (Public questions WITHOUT plain answer keys, Admin write)
+    match /quizzes/{quizId} {
+      allow get: if isValidId(quizId) && (resource == null || existing().isPublished == true || isAdmin());
+      allow list: if isAdmin() || existing().isPublished == true;
+      allow create: if isValidId(quizId) && isAdmin() && isValidPublicQuiz(incoming())
+        && incoming().createdAt <= request.time && incoming().updatedAt <= request.time;
+      allow update: if isValidId(quizId) && isAdmin() && isValidPublicQuiz(incoming())
+        && incoming().createdAt == existing().createdAt && incoming().updatedAt <= request.time
+        && incoming().diff(existing()).affectedKeys().hasOnly([
+          'title', 'description', 'instructions', 'targetClass', 'status',
+          'isPublished', 'timeLimitMinutes', 'maxAttempts', 'startAtIso', 'endAtIso',
+          'questionsCount', 'totalPoints', 'questions', 'updatedAt'
+        ]);
+      allow delete: if isValidId(quizId) && isAdmin();
+    }
+
+    // Quiz Keys (Strictly Admin-only: holds plain correctOptionId & teacher explanations)
+    match /quizKeys/{quizId} {
+      allow get: if isValidId(quizId) && isAdmin();
+      allow list: if isAdmin();
+      allow create: if isValidId(quizId) && isAdmin() && isValidQuizKey(incoming()) && incoming().updatedAt <= request.time;
+      allow update: if isValidId(quizId) && isAdmin() && isValidQuizKey(incoming()) && incoming().updatedAt <= request.time
+        && incoming().diff(existing()).affectedKeys().hasOnly(['quizId', 'questionCount', 'answers', 'updatedAt']);
+      allow delete: if isValidId(quizId) && isAdmin();
+    }
+
+    // Quiz Attempts (Student create validated against published quiz, Admin read/delete only)
+    match /quizAttempts/{attemptId} {
+      allow get: if isValidId(attemptId) && isAdmin();
+      allow list: if isAdmin();
+      allow create: if isValidId(attemptId)
+        && isValidQuizAttempt(incoming())
+        && incoming().createdAt <= request.time
+        && (
+          isAdmin() ||
+          (exists(/databases/$(database)/documents/quizzes/$(incoming().quizId))
+            && get(/databases/$(database)/documents/quizzes/$(incoming().quizId)).data.isPublished == true)
+        );
+      allow update: if false;
+      allow delete: if isValidId(attemptId) && isAdmin();
+    }
+
+    // WhatsApp Groups & Center Collections (Strictly Admin-only)
+    match /waGroups/{groupId} {
+      allow get: if isValidId(groupId) && isAdmin();
+      allow list: if isAdmin();
+      allow create: if isValidId(groupId) && isAdmin() && isValidWaGroup(incoming()) && incoming().updatedAt <= request.time;
+      allow update: if isValidId(groupId) && isAdmin() && isValidWaGroup(incoming()) && incoming().updatedAt <= request.time
+        && incoming().diff(existing()).affectedKeys().hasOnly(['groupId', 'name', 'pinned', 'updatedAt']);
+      allow delete: if isValidId(groupId) && isAdmin();
+    }
+
+    match /waTemplates/{templateId} {
+      allow get: if isValidId(templateId) && isAdmin();
+      allow list: if isAdmin();
+      allow create: if isValidId(templateId) && isAdmin() && isValidWaTemplate(incoming())
+        && incoming().createdAt <= request.time && incoming().updatedAt <= request.time;
+      allow update: if isValidId(templateId) && isAdmin() && isValidWaTemplate(incoming())
+        && incoming().createdAt == existing().createdAt && incoming().updatedAt <= request.time
+        && incoming().diff(existing()).affectedKeys().hasOnly(['name', 'category', 'content', 'isEnabled', 'updatedAt']);
+      allow delete: if isValidId(templateId) && isAdmin();
+    }
+
+    match /waCampaigns/{campaignId} {
+      allow get: if isValidId(campaignId) && isAdmin();
+      allow list: if isAdmin();
+      allow create: if isValidId(campaignId) && isAdmin() && isValidWaCampaign(incoming())
+        && incoming().createdAt <= request.time && incoming().updatedAt <= request.time;
+      allow update: if isValidId(campaignId) && isAdmin() && isValidWaCampaign(incoming())
+        && incoming().createdAt == existing().createdAt && incoming().updatedAt <= request.time
+        && incoming().diff(existing()).affectedKeys().hasOnly(['title', 'status', 'totalCount', 'sentCount', 'failedCount', 'updatedAt']);
+      allow delete: if isValidId(campaignId) && isAdmin();
+    }
+
+    match /waSettings/{settingId} {
+      allow get: if isValidId(settingId) && isAdmin();
+      allow list: if isAdmin();
+      allow create: if isValidId(settingId) && isAdmin() && isValidWaSetting(incoming()) && incoming().updatedAt <= request.time;
+      allow update: if isValidId(settingId) && isAdmin() && isValidWaSetting(incoming()) && incoming().updatedAt <= request.time
+        && incoming().diff(existing()).affectedKeys().hasOnly(['settingKey', 'delaySeconds', 'batchSize', 'maxRetries', 'updatedAt']);
+      allow delete: if isValidId(settingId) && isAdmin();
+    }
+
+    // TOMOYO ASISTEN Knowledge Center (Active items public read for grounding, Admin write)
+    match /aiKnowledge/{itemId} {
+      allow get: if isValidId(itemId) && (resource == null || existing().isActive == true || isAdmin());
+      allow list: if isAdmin() || existing().isActive == true;
+      allow create: if isValidId(itemId) && isAdmin() && isValidAiKnowledge(incoming())
+        && incoming().createdAt <= request.time && incoming().updatedAt <= request.time;
+      allow update: if isValidId(itemId) && isAdmin() && isValidAiKnowledge(incoming())
+        && incoming().createdAt == existing().createdAt && incoming().updatedAt <= request.time
+        && incoming().diff(existing()).affectedKeys().hasOnly(['title', 'category', 'content', 'isActive', 'updatedAt']);
+      allow delete: if isValidId(itemId) && isAdmin();
+    }
+
+    // TOMOYO ASISTEN Instructions (Strictly Admin-only)
+    match /aiInstructions/{docId} {
+      allow get: if isValidId(docId) && isAdmin();
+      allow list: if isAdmin();
+      allow create: if isValidId(docId) && isAdmin() && isValidAiInstruction(incoming()) && incoming().updatedAt <= request.time;
+      allow update: if isValidId(docId) && isAdmin() && isValidAiInstruction(incoming()) && incoming().updatedAt <= request.time
+        && incoming().diff(existing()).affectedKeys().hasOnly(['character', 'languageStyle', 'extraRules', 'answerBounds', 'unavailableBehavior', 'updatedAt']);
+      allow delete: if isValidId(docId) && isAdmin();
+    }
+
+    // TOMOYO ASISTEN Settings (Non-secret chatbot doc readable publicly, Admin write only)
+    match /aiSettings/{docId} {
+      allow get: if isValidId(docId) && (docId == 'chatbot' || isAdmin());
+      allow list: if isAdmin();
+      allow create: if isValidId(docId) && isAdmin() && isValidAiSetting(incoming()) && incoming().updatedAt <= request.time;
+      allow update: if isValidId(docId) && isAdmin() && isValidAiSetting(incoming()) && incoming().updatedAt <= request.time
+        && incoming().diff(existing()).affectedKeys().hasOnly([
+          'enabled', 'botName', 'tagline', 'description', 'welcomeMessage', 'suggestedQuestions',
+          'adminWhatsapp', 'publicEnabled', 'adminEnabled', 'allowPublicStudentCount',
+          'maxRequestsPerSession', 'maxInputLength', 'maxOutputTokens',
+          'dailyRequestLimit', 'monthlyRequestLimit', 'model', 'updatedAt'
+        ]);
+      allow delete: if isValidId(docId) && isAdmin();
+    }
+
+    // TOMOYO ASISTEN Usage Analytics (Strictly Admin-only, zero visitor transcripts)
+    match /aiUsageDaily/{dateKey} {
+      allow get: if isValidId(dateKey) && isAdmin();
+      allow list: if isAdmin();
+      allow create: if isValidId(dateKey) && isAdmin() && isValidAiUsageDaily(incoming()) && incoming().updatedAt <= request.time;
+      allow update: if isValidId(dateKey) && isAdmin() && isValidAiUsageDaily(incoming()) && incoming().updatedAt <= request.time
+        && incoming().diff(existing()).affectedKeys().hasOnly([
+          'dateKey', 'totalRequests', 'publicRequests', 'adminRequests',
+          'failedRequests', 'inputTokens', 'outputTokens', 'estimatedCostUsd',
+          'sessionCount', 'model', 'updatedAt'
+        ]);
+      allow delete: if isValidId(dateKey) && isAdmin();
+    }
+  }
+}
